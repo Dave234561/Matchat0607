@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Diagnostic - Chat Parisien</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            background: #2c3e50;
+            color: white;
+            font-family: Arial, sans-serif;
+        }
+        
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            background: #34495e;
+            border-radius: 5px;
+        }
+        
+        .success { color: #2ecc71; }
+        .error { color: #e74c3c; }
+        .warning { color: #f39c12; }
+        
+        #gameCanvas {
+            border: 2px solid #fff;
+            background: #87CEEB;
+        }
+        
+        .sprite-test {
+            display: inline-block;
+            margin: 10px;
+            text-align: center;
+        }
+        
+        .sprite-test img {
+            border: 1px solid #fff;
+            background: #fff;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔧 Diagnostic du Jeu Chat Parisien</h1>
+    
+    <div class="test-section">
+        <h2>1. Test JavaScript</h2>
+        <div id="jsTest">❌ JavaScript non détecté</div>
+    </div>
+    
+    <div class="test-section">
+        <h2>2. Test Canvas</h2>
+        <div id="canvasTest">❌ Canvas non testé</div>
+        <canvas id="gameCanvas" width="400" height="200"></canvas>
+    </div>
+    
+    <div class="test-section">
+        <h2>3. Test Chargement des Sprites</h2>
+        <div id="spriteTest">⏳ Chargement en cours...</div>
+        <div id="spriteDisplay"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>4. Informations Navigateur</h2>
+        <div id="browserInfo">❌ Non détecté</div>
+    </div>
+    
+    <div class="test-section">
+        <h2>5. Test Jeu Simplifié</h2>
+        <div id="gameTest">❌ Non testé</div>
+        <button onclick="startSimpleGame()">Démarrer Test Simple</button>
+    </div>
+
+    <script>
+        // Test 1: JavaScript
+        document.getElementById('jsTest').innerHTML = '<span class="success">✅ JavaScript fonctionne</span>';
+        
+        // Test 2: Canvas
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        if (ctx) {
+            document.getElementById('canvasTest').innerHTML = '<span class="success">✅ Canvas supporté</span>';
+            
+            // Dessiner un test simple
+            ctx.fillStyle = '#ff6600';
+            ctx.fillRect(50, 50, 100, 100);
+            ctx.fillStyle = '#fff';
+            ctx.font = '16px Arial';
+            ctx.fillText('Test Canvas OK', 60, 110);
+        } else {
+            document.getElementById('canvasTest').innerHTML = '<span class="error">❌ Canvas non supporté</span>';
+        }
+        
+        // Test 3: Sprites
+        const spritesToTest = [
+            'sprites/cat/cat_idle_1.png',
+            'sprites/enemies/mouse_idle.png',
+            'sprites/environment/paris_rooftop.png'
+        ];
+        
+        let spritesLoaded = 0;
+        let spritesTotal = spritesToTest.length;
+        let spriteResults = [];
+        
+        spritesToTest.forEach((src, index) => {
+            const img = new Image();
+            img.onload = function() {
+                spritesLoaded++;
+                spriteResults[index] = { src, status: 'success', img };
+                updateSpriteTest();
+            };
+            img.onerror = function() {
+                spritesLoaded++;
+                spriteResults[index] = { src, status: 'error' };
+                updateSpriteTest();
+            };
+            img.src = src;
+        });
+        
+        function updateSpriteTest() {
+            const testDiv = document.getElementById('spriteTest');
+            const displayDiv = document.getElementById('spriteDisplay');
+            
+            if (spritesLoaded === spritesTotal) {
+                const successCount = spriteResults.filter(r => r.status === 'success').length;
+                
+                if (successCount === spritesTotal) {
+                    testDiv.innerHTML = '<span class="success">✅ Tous les sprites chargés (' + successCount + '/' + spritesTotal + ')</span>';
+                } else {
+                    testDiv.innerHTML = '<span class="warning">⚠️ Sprites partiellement chargés (' + successCount + '/' + spritesTotal + ')</span>';
+                }
+                
+                // Afficher les sprites
+                displayDiv.innerHTML = '';
+                spriteResults.forEach(result => {
+                    const div = document.createElement('div');
+                    div.className = 'sprite-test';
+                    
+                    if (result.status === 'success') {
+                        div.innerHTML = `
+                            <img src="${result.src}" width="64" height="64">
+                            <br><span class="success">✅ ${result.src.split('/').pop()}</span>
+                        `;
+                    } else {
+                        div.innerHTML = `
+                            <div style="width:64px;height:64px;background:#e74c3c;display:inline-block;"></div>
+                            <br><span class="error">❌ ${result.src.split('/').pop()}</span>
+                        `;
+                    }
+                    displayDiv.appendChild(div);
+                });
+            }
+        }
+        
+        // Test 4: Informations navigateur
+        const browserInfo = {
+            userAgent: navigator.userAgent,
+            platform: navigator.platform,
+            language: navigator.language,
+            cookieEnabled: navigator.cookieEnabled,
+            onLine: navigator.onLine
+        };
+        
+        document.getElementById('browserInfo').innerHTML = `
+            <span class="success">✅ Navigateur détecté</span><br>
+            <strong>User Agent:</strong> ${browserInfo.userAgent}<br>
+            <strong>Plateforme:</strong> ${browserInfo.platform}<br>
+            <strong>Langue:</strong> ${browserInfo.language}<br>
+            <strong>Cookies:</strong> ${browserInfo.cookieEnabled ? 'Activés' : 'Désactivés'}<br>
+            <strong>En ligne:</strong> ${browserInfo.onLine ? 'Oui' : 'Non'}
+        `;
+        
+        // Test 5: Jeu simplifié
+        function startSimpleGame() {
+            const testDiv = document.getElementById('gameTest');
+            
+            try {
+                // Créer un mini-jeu simple
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                
+                // Arrière-plan
+                ctx.fillStyle = '#87CEEB';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                
+                // Chat simple
+                ctx.fillStyle = '#ff6600';
+                ctx.fillRect(100, 150, 40, 40);
+                
+                // Yeux
+                ctx.fillStyle = '#000';
+                ctx.fillRect(110, 160, 5, 5);
+                ctx.fillRect(125, 160, 5, 5);
+                
+                // Plateforme
+                ctx.fillStyle = '#8B4513';
+                ctx.fillRect(0, 190, canvas.width, 10);
+                
+                ctx.fillStyle = '#fff';
+                ctx.font = '14px Arial';
+                ctx.fillText('Chat simplifié - Test OK!', 10, 30);
+                
+                testDiv.innerHTML = '<span class="success">✅ Jeu simplifié fonctionne</span>';
+                
+            } catch (error) {
+                testDiv.innerHTML = '<span class="error">❌ Erreur: ' + error.message + '</span>';
+            }
+        }
+        
+        // Auto-test après 2 secondes
+        setTimeout(() => {
+            if (spritesLoaded === spritesTotal) {
+                const successCount = spriteResults.filter(r => r.status === 'success').length;
+                if (successCount === spritesTotal) {
+                    startSimpleGame();
+                }
+            }
+        }, 2000);
+        
+        console.log('Diagnostic démarré - Vérifiez cette page pour identifier les problèmes');
+    </script>
+</body>
+</html>
+

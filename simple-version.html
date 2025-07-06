@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat Parisien - Version Alternative</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: #2c3e50;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            font-family: 'Arial', sans-serif;
+        }
+        
+        #gameContainer {
+            border: 3px solid #34495e;
+            border-radius: 10px;
+            background: #ecf0f1;
+            padding: 10px;
+        }
+        
+        #gameCanvas {
+            background: #87CEEB;
+            border: 2px solid #2c3e50;
+            display: block;
+        }
+        
+        #gameUI {
+            margin-top: 10px;
+            text-align: center;
+            color: #2c3e50;
+        }
+        
+        .score {
+            font-size: 18px;
+            font-weight: bold;
+            margin: 5px 0;
+        }
+        
+        .status {
+            font-size: 14px;
+            color: #7f8c8d;
+            margin: 5px 0;
+        }
+    </style>
+</head>
+<body>
+    <div id="gameContainer">
+        <canvas id="gameCanvas" width="800" height="400"></canvas>
+        <div id="gameUI">
+            <div class="score">Score: <span id="scoreValue">0</span></div>
+            <div class="score">Vies: <span id="livesValue">3</span></div>
+            <div class="status" id="gameStatus">Chargement...</div>
+            <div class="status">
+                <strong>Contrôles:</strong> Flèches = Déplacement | Espace = Saut | Ctrl = Attaque
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // Version simplifiée sans sprites externes
+        class SimpleGame {
+            constructor() {
+                this.canvas = document.getElementById('gameCanvas');
+                this.ctx = this.canvas.getContext('2d');
+                this.width = this.canvas.width;
+                this.height = this.canvas.height;
+                
+                this.score = 0;
+                this.lives = 3;
+                this.gameRunning = true;
+                
+                // Joueur (chat)
+                this.player = {
+                    x: 100,
+                    y: 300,
+                    width: 40,
+                    height: 40,
+                    vx: 0,
+                    vy: 0,
+                    onGround: false,
+                    speed: 5,
+                    jumpPower: 12
+                };
+                
+                // Ennemis
+                this.enemies = [
+                    { x: 300, y: 340, width: 20, height: 20, type: 'mouse', points: 10 },
+                    { x: 500, y: 340, width: 30, height: 30, type: 'dog', points: 20 },
+                    { x: 700, y: 320, width: 50, height: 50, type: 'cat', points: 50 }
+                ];
+                
+                // Plateformes
+                this.platforms = [
+                    { x: 0, y: 380, width: this.width, height: 20 }, // Sol
+                    { x: 200, y: 300, width: 100, height: 20 },
+                    { x: 400, y: 250, width: 100, height: 20 },
+                    { x: 600, y: 200, width: 100, height: 20 }
+                ];
+                
+                this.gravity = 0.8;
+                this.keys = {};
+                
+                this.setupControls();
+                this.gameLoop();
+                
+                document.getElementById('gameStatus').textContent = 'Jeu démarré ! Utilisez les flèches pour bouger.';
+            }
+            
+            setupControls() {
+                document.addEventListener('keydown', (e) => {
+                    this.keys[e.code] = true;
+                    if(['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space'].includes(e.code)) {
+                        e.preventDefault();
+                    }
+                });
+                
+                document.addEventListener('keyup', (e) => {
+                    this.keys[e.code] = false;
+                });
+            }
+            
+            update() {
+                if (!this.gameRunning) return;
+                
+                // Contrôles du joueur
+                if (this.keys['ArrowLeft']) {
+                    this.player.vx = -this.player.speed;
+                } else if (this.keys['ArrowRight']) {
+                    this.player.vx = this.player.speed;
+                } else {
+                    this.player.vx *= 0.8; // Friction
+                }
+                
+                if ((this.keys['ArrowUp'] || this.keys['Space']) && this.player.onGround) {
+                    this.player.vy = -this.player.jumpPower;
+                    this.player.onGround = false;
+                }
+                
+                // Physique
+                this.player.vy += this.gravity;
+                this.player.x += this.player.vx;
+                this.player.y += this.player.vy;
+                
+                // Collisions avec plateformes
+                this.player.onGround = false;
+                this.platforms.forEach(platform => {
+                    if (this.player.x < platform.x + platform.width &&
+                        this.player.x + this.player.width > platform.x &&
+                        this.player.y < platform.y + platform.height &&
+                        this.player.y + this.player.height > platform.y) {
+                        
+                        if (this.player.vy > 0 && this.player.y < platform.y) {
+                            this.player.y = platform.y - this.player.height;
+                            this.player.vy = 0;
+                            this.player.onGround = true;
+                        }
+                    }
+                });
+                
+                // Collisions avec ennemis
+                this.enemies = this.enemies.filter(enemy => {
+                    if (this.player.x < enemy.x + enemy.width &&
+                        this.player.x + this.player.width > enemy.x &&
+                        this.player.y < enemy.y + enemy.height &&
+                        this.player.y + this.player.height > enemy.y) {
+                        
+                        if (this.keys['ControlLeft'] || this.keys['ControlRight']) {
+                            // Attaque
+                            this.score += enemy.points;
+                            document.getElementById('scoreValue').textContent = this.score;
+                            return false; // Supprimer l'ennemi
+                        } else {
+                            // Dégâts
+                            this.lives--;
+                            document.getElementById('livesValue').textContent = this.lives;
+                            this.player.x = 100; // Respawn
+                            this.player.y = 300;
+                            
+                            if (this.lives <= 0) {
+                                this.gameRunning = false;
+                                document.getElementById('gameStatus').textContent = 'Game Over ! Rechargez pour rejouer.';
+                            }
+                        }
+                    }
+                    return true;
+                });
+                
+                // Victoire
+                if (this.enemies.length === 0) {
+                    this.gameRunning = false;
+                    document.getElementById('gameStatus').textContent = 'Victoire ! Tous les ennemis vaincus !';
+                }
+                
+                // Limites
+                if (this.player.x < 0) this.player.x = 0;
+                if (this.player.x > this.width - this.player.width) this.player.x = this.width - this.player.width;
+            }
+            
+            render() {
+                // Effacer
+                this.ctx.clearRect(0, 0, this.width, this.height);
+                
+                // Arrière-plan parisien simplifié
+                this.ctx.fillStyle = '#87CEEB';
+                this.ctx.fillRect(0, 0, this.width, this.height);
+                
+                // Tour Eiffel simplifiée
+                this.ctx.fillStyle = '#666';
+                this.ctx.fillRect(this.width - 100, 50, 4, 200);
+                this.ctx.fillRect(this.width - 120, 150, 40, 4);
+                this.ctx.fillRect(this.width - 110, 100, 20, 4);
+                
+                // Nuages
+                this.ctx.fillStyle = '#fff';
+                this.ctx.beginPath();
+                this.ctx.arc(100, 80, 30, 0, Math.PI * 2);
+                this.ctx.arc(300, 60, 25, 0, Math.PI * 2);
+                this.ctx.arc(500, 90, 35, 0, Math.PI * 2);
+                this.ctx.fill();
+                
+                // Plateformes
+                this.ctx.fillStyle = '#8B4513';
+                this.platforms.forEach(platform => {
+                    this.ctx.fillRect(platform.x, platform.y, platform.width, platform.height);
+                });
+                
+                // Joueur (chat orange)
+                this.ctx.fillStyle = '#FF8C00';
+                this.ctx.fillRect(this.player.x, this.player.y, this.player.width, this.player.height);
+                
+                // Yeux du chat
+                this.ctx.fillStyle = '#000';
+                this.ctx.fillRect(this.player.x + 8, this.player.y + 8, 6, 6);
+                this.ctx.fillRect(this.player.x + 26, this.player.y + 8, 6, 6);
+                
+                // Ventre blanc
+                this.ctx.fillStyle = '#FFF';
+                this.ctx.fillRect(this.player.x + 10, this.player.y + 20, 20, 15);
+                
+                // Ennemis
+                this.enemies.forEach(enemy => {
+                    switch(enemy.type) {
+                        case 'mouse':
+                            this.ctx.fillStyle = '#666';
+                            break;
+                        case 'dog':
+                            this.ctx.fillStyle = '#8B4513';
+                            break;
+                        case 'cat':
+                            this.ctx.fillStyle = '#333';
+                            break;
+                    }
+                    this.ctx.fillRect(enemy.x, enemy.y, enemy.width, enemy.height);
+                    
+                    // Yeux rouges pour les ennemis
+                    this.ctx.fillStyle = '#f00';
+                    this.ctx.fillRect(enemy.x + 4, enemy.y + 4, 3, 3);
+                    this.ctx.fillRect(enemy.x + enemy.width - 7, enemy.y + 4, 3, 3);
+                });
+                
+                // Indicateur d'attaque
+                if (this.keys['ControlLeft'] || this.keys['ControlRight']) {
+                    this.ctx.fillStyle = 'rgba(255, 255, 0, 0.5)';
+                    this.ctx.fillRect(this.player.x - 10, this.player.y - 10, this.player.width + 20, this.player.height + 20);
+                }
+            }
+            
+            gameLoop() {
+                this.update();
+                this.render();
+                requestAnimationFrame(() => this.gameLoop());
+            }
+        }
+        
+        // Démarrer le jeu
+        window.addEventListener('load', () => {
+            new SimpleGame();
+        });
+        
+        console.log('Version alternative du jeu Chat Parisien chargée !');
+    </script>
+</body>
+</html>
+
