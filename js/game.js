@@ -9,7 +9,7 @@ class Game {
         // État du jeu
         this.gameState = 'playing'; // playing, paused, gameOver
         this.score = 0;
-        this.lives = 3;
+        this.lives = 6;
         this.level = 1;
         
         // Physique
@@ -41,6 +41,9 @@ class Game {
         this.keys = {};
         this.setupControls();
         
+        // État de la boucle de jeu
+        this.gameLoopStarted = false;
+        
         // Initialisation
         this.loadSprites();
     }
@@ -59,6 +62,7 @@ class Game {
             this.keys[e.code] = false;
         });
     }
+    
     
     loadSprites() {
         const spriteList = [
@@ -100,7 +104,11 @@ class Game {
             // Environnement
             'sprites/environment/paris_rooftop.png',
             'sprites/environment/paris_rooftop_seamless.png',
-            'sprites/environment/platform_tile.png'
+            'sprites/environment/platform_tile.png',
+            'sprites/environment/plateforme_pierre_haussmannienne.png',
+            'sprites/environment/plateforme_2D_toit_incline.png',
+            'sprites/environment/plateforme_2D_pierre_simple.png',
+            'sprites/environment/plateforme_2D_balcon_etroit.png'
         ];
         
         this.totalSprites = spriteList.length;
@@ -161,115 +169,162 @@ class Game {
     init() {
         console.log("Initialisation du jeu - début");
         
-        // Créer le joueur
-        this.player = new Player(100, 400, this);
+        // Vérifier si le joueur existe déjà
+        if (this.player) {
+            console.log("Le joueur existe déjà, ne pas créer une nouvelle instance");
+            return;
+        }
+        
+        // Créer le joueur (descendu de 50 pixels supplémentaires pour plateforme du bas)
+        this.player = new Player(100, this.height - 128 - 64 + 8 + 50, this); // Même offset que les souris (8px) + 50px plus bas
+        this.player.onGround = true; // Start on ground
+        this.player.invulnerable = false; // Make sure not invulnerable
+        this.player.invulnerabilityTimer = 0;
         console.log("Joueur créé");
+        
+        // Vider les tableaux existants
+        this.platforms = [];
+        this.enemies = [];
+        this.particles = [];
         
         // Créer les plateformes de base
         this.createBasicLevel();
         console.log("Niveau créé - Plateformes:", this.platforms.length, "Ennemis:", this.enemies.length);
         
-        // Démarrer la boucle de jeu
-        this.gameLoop();
-        console.log("Boucle de jeu démarrée");
+        // Démarrer la boucle de jeu seulement si elle n'est pas déjà en cours
+        if (!this.gameLoopStarted) {
+            this.gameLoopStarted = true;
+            this.gameLoop();
+            console.log("Boucle de jeu démarrée");
+        }
     }
     
     createBasicLevel() {
-        // Sol principal étendu sur 6 largeurs d'écran (environ 112 plateformes)
-        for (let i = 0; i < 112; i++) {
-            this.platforms.push(new Platform(i * 64, this.height - 64, 64, 64, this));
+        // Sol principal étendu sur 6 largeurs d'écran - sprites se touchent sur les côtés
+        for (let i = 0; i < 56; i++) { // Plateformes qui se touchent
+            this.platforms.push(new Platform(i * 128, this.height - 128, 128, 128, this, 'pierre'));
         }
         
-        // Plateformes en hauteur - Section 1
-        for (let i = 5; i < 15; i++) {
-            this.platforms.push(new Platform(i * 64, this.height - 200, 64, 64, this));
+        // Section 1 - Plateformes qui se touchent parfaitement (128x128 côte à côte)
+        for (let i = 3; i < 8; i++) {
+            this.platforms.push(new Platform(i * 128, this.height - 256, 128, 128, this, 'pierre'));
         }
         
-        for (let i = 12; i < 22; i++) {
-            this.platforms.push(new Platform(i * 64, this.height - 300, 64, 64, this));
+        // Section 1 - Balcons étroits qui se touchent
+        for (let i = 6; i < 11; i++) {
+            this.platforms.push(new Platform(i * 128, this.height - 384, 128, 128, this, 'balcon'));
         }
         
-        // Plateformes en hauteur - Section 2
-        for (let i = 25; i < 35; i++) {
-            this.platforms.push(new Platform(i * 64, this.height - 180, 64, 64, this));
+        // Section 2 - Toits inclinés qui se touchent
+        for (let i = 12; i < 17; i++) {
+            this.platforms.push(new Platform(i * 128, this.height - 208, 128, 128, this, 'toit'));
         }
         
-        for (let i = 30; i < 40; i++) {
-            this.platforms.push(new Platform(i * 64, this.height - 280, 64, 64, this));
+        for (let i = 15; i < 20; i++) {
+            this.platforms.push(new Platform(i * 128, this.height - 336, 128, 128, this, 'pierre'));
         }
         
-        // Plateformes en hauteur - Section 3
-        for (let i = 45; i < 55; i++) {
-            this.platforms.push(new Platform(i * 64, this.height - 220, 64, 64, this));
+        // Section 3 - Balcons qui se touchent
+        for (let i = 22; i < 27; i++) {
+            this.platforms.push(new Platform(i * 128, this.height - 288, 128, 128, this, 'balcon'));
         }
         
-        for (let i = 50; i < 60; i++) {
-            this.platforms.push(new Platform(i * 64, this.height - 320, 64, 64, this));
+        for (let i = 25; i < 30; i++) {
+            this.platforms.push(new Platform(i * 128, this.height - 416, 128, 128, this, 'toit'));
         }
         
-        // Plateformes en hauteur - Section 4
-        for (let i = 65; i < 75; i++) {
-            this.platforms.push(new Platform(i * 64, this.height - 160, 64, 64, this));
+        // Section 4 - Toits qui se touchent
+        for (let i = 32; i < 37; i++) {
+            this.platforms.push(new Platform(i * 128, this.height - 240, 128, 128, this, 'toit'));
         }
         
-        for (let i = 70; i < 80; i++) {
-            this.platforms.push(new Platform(i * 64, this.height - 260, 64, 64, this));
+        for (let i = 35; i < 40; i++) {
+            this.platforms.push(new Platform(i * 128, this.height - 368, 128, 128, this, 'balcon'));
         }
         
-        // Plateformes en hauteur - Section 5
-        for (let i = 85; i < 95; i++) {
-            this.platforms.push(new Platform(i * 64, this.height - 200, 64, 64, this));
+        // Section 5 - Pierre qui se touche
+        for (let i = 42; i < 47; i++) {
+            this.platforms.push(new Platform(i * 128, this.height - 272, 128, 128, this, 'pierre'));
         }
         
-        for (let i = 90; i < 100; i++) {
-            this.platforms.push(new Platform(i * 64, this.height - 300, 64, 64, this));
+        for (let i = 45; i < 50; i++) {
+            this.platforms.push(new Platform(i * 128, this.height - 400, 128, 128, this, 'toit'));
         }
         
-        // Plateformes finales - Section 6
-        for (let i = 105; i < 112; i++) {
-            this.platforms.push(new Platform(i * 64, this.height - 240, 64, 64, this));
+        // Section finale - Plateformes qui se touchent
+        for (let i = 52; i < 56; i++) {
+            // Alterner entre balcons et pierre
+            const type = i % 2 === 0 ? 'balcon' : 'pierre';
+            this.platforms.push(new Platform(i * 128, this.height - 304, 128, 128, this, type));
         }
         
         // Ajouter beaucoup plus d'ennemis répartis sur tout le niveau avec plus de variété
-        // Section 1 (0-1600px) - Introduction
-        this.enemies.push(new Mouse(300, this.height - 128, this)); // Sur le sol
-        this.enemies.push(new Mouse(500, this.height - 128, this));
-        this.enemies.push(new Dog(800, this.height - 128, this));
-        this.enemies.push(new Mouse(1200, this.height - 128, this));
-        this.enemies.push(new Squirrel(1500, this.height - 128, this));
+        // Platform surface is at this.height - 128, so enemies should be positioned at surface - enemy.height
+        const groundY = this.height - 128; // Platform surface
         
-        // Section 2 (1600-3200px) - Difficulté croissante
-        this.enemies.push(new Dog(1800, this.height - 128, this));
-        this.enemies.push(new Mouse(2100, this.height - 128, this));
-        this.enemies.push(new Squirrel(2400, this.height - 128, this));
-        this.enemies.push(new Dog(2700, this.height - 128, this));
-        this.enemies.push(new BigCat(3000, this.height - 128, this));
+        // Section 1 (0-1600px) - Introduction (remontés de 50px par rapport à avant)
+        this.enemies.push(new Mouse(300, groundY - 32 + 8 + 50, this)); // Mouse: 8px overlap + 50px down
+        this.enemies.push(new Mouse(500, groundY - 32 + 8 + 50, this));
+        this.enemies.push(new Dog(800, groundY - 48 + 10 + 50, this)); // Dog: overlap by 10px + 50px down
+        this.enemies.push(new Mouse(1200, groundY - 32 + 8 + 50, this));
+        this.enemies.push(new Squirrel(1500, groundY - 40 + 7 + 50, this)); // Squirrel: 7px overlap + 50px down
         
-        // Section 3 (3200-4800px) - Plus de défis
-        this.enemies.push(new Mouse(3300, this.height - 128, this));
-        this.enemies.push(new Dog(3600, this.height - 128, this));
-        this.enemies.push(new Squirrel(3900, this.height - 128, this));
-        this.enemies.push(new Mouse(4200, this.height - 128, this));
-        this.enemies.push(new BigCat(4500, this.height - 128, this));
-        this.enemies.push(new Dog(4800, this.height - 128, this));
+        // Section 2 (1600-3200px) - Difficulté croissante (remontés de 50px)
+        this.enemies.push(new Dog(1800, groundY - 48 + 10 + 50, this));
+        this.enemies.push(new Mouse(2100, groundY - 32 + 8 + 50, this));
+        this.enemies.push(new Squirrel(2400, groundY - 40 + 7 + 50, this));
+        this.enemies.push(new Dog(2700, groundY - 48 + 10 + 50, this));
+        this.enemies.push(new BigCat(3000, groundY - 80 + 10 + 50, this)); // BigCat: 80px high + 50px down
         
-        // Section 4 (4800-6400px) - Zone difficile
-        this.enemies.push(new Squirrel(5100, this.height - 128, this));
-        this.enemies.push(new Mouse(5400, this.height - 128, this));
-        this.enemies.push(new Dog(5700, this.height - 128, this));
-        this.enemies.push(new BigCat(6000, this.height - 128, this));
-        this.enemies.push(new Squirrel(6300, this.height - 128, this));
+        // Section 3 (3200-4800px) - Plus de défis (remontés de 50px)
+        this.enemies.push(new Mouse(3300, groundY - 32 + 8 + 50, this));
+        this.enemies.push(new Dog(3600, groundY - 48 + 10 + 50, this));
+        this.enemies.push(new Squirrel(3900, groundY - 40 + 7 + 50, this));
+        this.enemies.push(new Mouse(4200, groundY - 32 + 8 + 50, this));
+        this.enemies.push(new BigCat(4500, groundY - 80 + 10 + 50, this));
+        this.enemies.push(new Dog(4800, groundY - 48 + 10 + 50, this));
         
-        // Section 5 (6400-7200px) - Avant le boss
-        this.enemies.push(new Dog(6600, this.height - 128, this));
-        this.enemies.push(new BigCat(6900, this.height - 128, this));
-        this.enemies.push(new Mouse(7200, this.height - 128, this));
-        this.enemies.push(new Squirrel(7500, this.height - 128, this));
+        // Section 4 (4800-6400px) - Zone difficile (remontés de 50px)
+        this.enemies.push(new Squirrel(5100, groundY - 40 + 7 + 50, this));
+        this.enemies.push(new Mouse(5400, groundY - 32 + 8 + 50, this));
+        this.enemies.push(new Dog(5700, groundY - 48 + 10 + 50, this));
+        this.enemies.push(new BigCat(6000, groundY - 80 + 10 + 50, this));
+        this.enemies.push(new Squirrel(6300, groundY - 40 + 7 + 50, this));
         
-        // Section finale (7200px+) - Boss et gardes
-        this.enemies.push(new Dog(7800, this.height - 128, this));
-        this.enemies.push(new BigCat(8100, this.height - 128, this));
-        this.enemies.push(new Bear(8400, this.height - 180, this)); // Boss final (plus grand)
+        // Section 5 (6400-7200px) - Avant le boss (remontés de 50px)
+        this.enemies.push(new Dog(6600, groundY - 48 + 10 + 50, this));
+        this.enemies.push(new BigCat(6900, groundY - 80 + 10 + 50, this));
+        this.enemies.push(new Mouse(7200, groundY - 32 + 8 + 50, this));
+        this.enemies.push(new Squirrel(7500, groundY - 40 + 7 + 50, this));
+        
+        // Section finale (7200px+) - Boss et gardes (remontés de 50px)
+        this.enemies.push(new Dog(7800, groundY - 48 + 10 + 50, this));
+        this.enemies.push(new BigCat(8100, groundY - 80 + 10 + 50, this));
+        this.enemies.push(new Bear(8400, groundY - 128 + 10 + 50, this)); // Boss final (Bear: 128px high) + 50px down
+        
+        // Ennemis sur les plateformes en hauteur - ajustés pour être à la hauteur du chat
+        // Section 1 upper platforms (écureuil à la hauteur du chat)
+        this.enemies.push(new Mouse(4 * 128, this.height - 256 - 32 + 8 + 100, this)); // Mouse sur plateforme pierre + 100px down
+        this.enemies.push(new Squirrel(8 * 128, this.height - 384 - 40 + 7 + 100 + 100, this)); // Squirrel à la hauteur du chat (+ 200px total)
+        
+        // Section 2 upper platforms (descendus de 100px)
+        this.enemies.push(new Mouse(14 * 128, this.height - 208 - 32 + 8 + 100, this)); // Mouse sur toit incliné + 100px down
+        this.enemies.push(new Dog(17 * 128, this.height - 336 - 48 + 10 + 100, this)); // Dog sur pierre haute + 100px down
+        
+        // Section 3 upper platforms (descendus de 100px)
+        this.enemies.push(new Squirrel(24 * 128, this.height - 288 - 40 + 7 + 100, this)); // Squirrel sur balcon + 100px down
+        this.enemies.push(new Mouse(27 * 128, this.height - 416 - 32 + 8 + 100, this)); // Mouse sur toit très haut + 100px down
+        
+        // Section 4 upper platforms (descendus de 100px)
+        this.enemies.push(new Dog(34 * 128, this.height - 240 - 48 + 10 + 100, this)); // Dog sur toit bas + 100px down
+        this.enemies.push(new Mouse(37 * 128, this.height - 368 - 32 + 8 + 100, this)); // Mouse sur balcon haut + 100px down
+        
+        // Section 5 upper platforms (descendus de 100px)
+        this.enemies.push(new Squirrel(44 * 128, this.height - 272 - 40 + 7 + 100, this)); // Squirrel sur pierre + 100px down
+        this.enemies.push(new Dog(47 * 128, this.height - 400 - 48 + 10 + 100, this)); // Dog sur toit très haut + 100px down
+        
+        // Section 6 upper platforms (descendus de 100px)
+        this.enemies.push(new Mouse(54 * 128, this.height - 304 - 32 + 8 + 100, this)); // Mouse sur plateforme finale + 100px down
     }
     
     update() {
@@ -314,14 +369,15 @@ class Game {
             targetX = this.player.x - deadZoneLeft;
         }
         
-        const targetY = this.player.y - this.height * 0.7; // Placer le joueur à 70% de la hauteur au lieu de 50%
+        // Fixer la caméra verticalement - pas de mouvement vertical
+        const targetY = 0; // Caméra fixe en Y
         
         // Calculer la largeur totale du niveau (environ 6 largeurs d'écran)
         const levelWidth = this.width * 6;
         
         // Limites de la caméra
         this.camera.x = Math.max(-this.width / 2, Math.min(levelWidth - this.width / 2, targetX));
-        this.camera.y = Math.max(-100, Math.min(100, targetY)); // Permettre plus de mouvement vertical
+        this.camera.y = targetY; // Caméra fixe verticalement
     }
     
     checkCollisions() {
@@ -380,8 +436,12 @@ class Game {
         this.enemies.forEach(enemy => {
             if (this.player.checkCollision(enemy) && !enemy.destroyed) {
                 if (this.player.attacking) {
-                    enemy.takeDamage();
-                    this.score += enemy.points || 10;
+                    // Vérifier si cet ennemi n'a pas déjà été attaqué dans cette attaque
+                    if (!this.player.attackedEnemies.includes(enemy)) {
+                        enemy.takeDamage();
+                        this.score += enemy.points || 10;
+                        this.player.attackedEnemies.push(enemy); // Marquer comme attaqué
+                    }
                 } else {
                     this.player.takeDamage();
                 }
@@ -411,7 +471,14 @@ class Game {
         this.ctx.translate(-this.camera.x, -this.camera.y);
         
         // Dessiner les plateformes
-        this.platforms.forEach(platform => platform.render());
+        this.platforms.forEach(platform => {
+            // Forcer l'appel de render avec un try-catch pour débugger
+            try {
+                platform.render();
+            } catch (error) {
+                console.error('Erreur lors du rendu de la plateforme:', error, platform);
+            }
+        });
         
         // Dessiner les ennemis
         this.enemies.forEach(enemy => enemy.render());
@@ -483,12 +550,12 @@ class Game {
         // Nuages
         ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
         for (let i = 0; i < 8; i++) {
-            const cloudX = (i * 200 - this.camera.x * 0.3) % (this.width + 200);
+            const cloudX = (i * 200 - this.camera.x * 0.3) % (this.width + 100);
             const cloudY = 50 + (i % 3) * 40;
             
             ctx.beginPath();
             ctx.arc(cloudX, cloudY, 25, 0, Math.PI * 2);
-            ctx.arc(cloudX + 20, cloudY, 30, 0, Math.PI * 2);
+            ctx.arc(cloudX + 10, cloudY, 30, 0, Math.PI * 2);
             ctx.arc(cloudX + 40, cloudY, 25, 0, Math.PI * 2);
             ctx.fill();
         }
@@ -582,49 +649,110 @@ class GameObject {
 
 // Classe Platform
 class Platform extends GameObject {
-    constructor(x, y, width, height, game) {
+    constructor(x, y, width, height, game, platformType = 'ground') {
         super(x, y, width, height, game);
         this.type = 'platform';
+        this.platformType = platformType; // 'ground', 'upper', 'inclined', 'balcony'
     }
     
     render() {
         const ctx = this.game.ctx;
         
-        // Utiliser un rendu personnalisé sans fond blanc
-        // Créer des tuiles de toit parisien authentiques
-        const tileWidth = 40;
-        const tileHeight = 40;
+        // Plateformes maintenant visibles avec les vrais sprites
         
-        // Dessiner tuile par tuile pour couvrir la plateforme
-        for (let x = 0; x < this.width; x += tileWidth) {
-            for (let y = 0; y < this.height; y += tileHeight) {
-                const tileX = this.x + x;
-                const tileY = this.y + y;
-                const actualTileWidth = Math.min(tileWidth, this.width - x);
-                const actualTileHeight = Math.min(tileHeight, this.height - y);
-                
-                // Tuile de toit parisien - ardoise grise
-                ctx.fillStyle = '#4A5568';
-                ctx.fillRect(tileX, tileY, actualTileWidth, actualTileHeight);
-                
-                // Bordure de tuile
-                ctx.fillStyle = '#2D3748';
-                ctx.fillRect(tileX, tileY, actualTileWidth, 3);
-                ctx.fillRect(tileX, tileY, 3, actualTileHeight);
-                
-                // Effet de relief
-                ctx.fillStyle = '#718096';
-                ctx.fillRect(tileX + actualTileWidth - 2, tileY, 2, actualTileHeight);
-                ctx.fillRect(tileX, tileY + actualTileHeight - 2, actualTileWidth, 2);
-                
-                // Partie rouge (brique) en bas
-                if (y + tileHeight >= this.height - 10) {
-                    ctx.fillStyle = '#C53030';
-                    ctx.fillRect(tileX, tileY + actualTileHeight - 10, actualTileWidth, 10);
+        // Choisir le sprite en fonction du type de plateforme
+        let spriteName;
+        switch (this.platformType) {
+            case 'pierre':
+                spriteName = 'plateforme_2D_pierre_simple';
+                break;
+            case 'toit':
+                spriteName = 'plateforme_2D_toit_incline';
+                break;
+            case 'balcon':
+                spriteName = 'plateforme_2D_balcon_etroit';
+                break;
+            default:
+                spriteName = 'plateforme_2D_pierre_simple';
+        }
+        
+        const sprite = this.game.sprites[spriteName];
+        
+        // Debug complet du sprite une seule fois
+        if (!this.debugDone) {
+            console.log('=== SPRITES PLATEFORMES DISPONIBLES ===');
+            console.log('spriteName demandé:', spriteName, 'trouvé:', !!sprite);
+            console.log('Sprites de plateformes chargés:');
+            Object.keys(this.game.sprites).filter(key => key.includes('plateforme')).forEach(key => {
+                const s = this.game.sprites[key];
+                console.log(`  ${key}: ${s.naturalWidth}x${s.naturalHeight} (complete: ${s.complete})`);
+            });
+            console.log('===================');
+            this.debugDone = true;
+        }
+        
+        if (sprite && sprite.complete && sprite.naturalWidth > 0) { // Utiliser les vrais sprites
+            // Élargir les sprites, avec des élargissements spéciaux
+            let extraWidth = 60; // Par défaut +60 pixels
+            if (spriteName === 'plateforme_2D_balcon_etroit') {
+                extraWidth = 110; // +110 pixels pour les balcons (+30 de plus)
+            } else if (spriteName === 'plateforme_2D_toit_incline') {
+                extraWidth = 170; // +170 pixels pour les toits inclinés (+20 de plus)
+            }
+            
+            ctx.drawImage(
+                sprite,
+                this.x, this.y, this.width + extraWidth, this.height
+            );
+        } else {
+            // Fallback - ancien rendu avec couleurs différenciées
+            const tileWidth = 40;
+            const tileHeight = 40;
+            
+            for (let x = 0; x < this.width; x += tileWidth) {
+                for (let y = 0; y < this.height; y += tileHeight) {
+                    const tileX = this.x + x;
+                    const tileY = this.y + y;
+                    const actualTileWidth = Math.min(tileWidth, this.width - x);
+                    const actualTileHeight = Math.min(tileHeight, this.height - y);
                     
-                    // Joints de mortier
-                    ctx.fillStyle = '#E2E8F0';
-                    ctx.fillRect(tileX, tileY + actualTileHeight - 5, actualTileWidth, 1);
+                    // Couleurs de fallback normales
+                    switch (this.platformType) {
+                        case 'pierre':
+                            ctx.fillStyle = '#D2B48C'; // Beige pour pierre simple
+                            break;
+                        case 'toit':
+                            ctx.fillStyle = '#708090'; // Gris ardoise pour toits
+                            break;
+                        case 'balcon':
+                            ctx.fillStyle = '#F5DEB3'; // Wheat pour balcons
+                            break;
+                        default:
+                            ctx.fillStyle = '#D2B48C';
+                    }
+                    ctx.fillRect(tileX, tileY, actualTileWidth, actualTileHeight);
+                    
+                    // Bordure noire épaisse pour bien voir les plateformes
+                    ctx.strokeStyle = '#000000';
+                    ctx.lineWidth = 3;
+                    ctx.strokeRect(tileX, tileY, actualTileWidth, actualTileHeight);
+                    
+                    // Ombres pour donner du relief
+                    ctx.fillStyle = '#2D3748';
+                    ctx.fillRect(tileX, tileY, actualTileWidth, 3);
+                    ctx.fillRect(tileX, tileY, 3, actualTileHeight);
+                    
+                    ctx.fillStyle = '#718096';
+                    ctx.fillRect(tileX + actualTileWidth - 2, tileY, 2, actualTileHeight);
+                    ctx.fillRect(tileX, tileY + actualTileHeight - 2, actualTileWidth, 2);
+                    
+                    if (y + tileHeight >= this.height - 10) {
+                        ctx.fillStyle = '#C53030';
+                        ctx.fillRect(tileX, tileY + actualTileHeight - 10, actualTileWidth, 10);
+                        
+                        ctx.fillStyle = '#E2E8F0';
+                        ctx.fillRect(tileX, tileY + actualTileHeight - 5, actualTileWidth, 1);
+                    }
                 }
             }
         }

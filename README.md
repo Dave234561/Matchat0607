@@ -1,151 +1,99 @@
-# Chat Parisien - Jeu de Plateforme 🐱🗼
+# Chat Parisien 🐱🗼
 
-Un jeu de plateforme 2D mettant en scène un chat orange aventurier qui explore les toits de Paris et combat différents ennemis pour sauver la ville !
+A 2D HTML5 Canvas platformer game featuring an orange cat exploring the rooftops of Paris.
 
-## 🎮 Description du Jeu
+## Quick Start
 
-Incarnez un chat orange courageux qui parcourt les toits parisiens emblématiques. Votre mission : traverser 5 niveaux remplis d'ennemis et affronter l'ours boss final pour sauver Paris !
+Simply open `index.html` in your web browser - no build process required!
 
-### 🏙️ Univers
-- **Décor** : Toits de Paris avec la Tour Eiffel en arrière-plan
-- **Style** : Pixel art coloré et cartoon
-- **Ambiance** : Aventure urbaine parisienne
-
-### 🐾 Personnage Principal
-- **Chat orange** avec rayures foncées et ventre blanc
-- **Yeux verts** expressifs
-- **Animations complètes** : repos, course, saut, attaques
-
-## 🎯 Gameplay
-
-### Contrôles
-- **Flèches Gauche/Droite** : Déplacement
-- **Flèche Haut / Espace** : Saut
-- **Ctrl Gauche** : Attaque pattes avant
-- **Ctrl Droit** : Attaque pattes arrière
-- **Échap** : Pause
-
-### Mécaniques
-- **Physique réaliste** : Gravité, collisions, friction
-- **Système de vie** : 3 cœurs par défaut
-- **Score** : Points pour chaque ennemi vaincu
-- **Progression** : 5 niveaux avec difficulté croissante
-
-## 👾 Ennemis
-
-1. **Souris méchantes** (10 pts) - Rapides et nombreuses
-2. **Petits chiens** (20 pts) - Sautent occasionnellement
-3. **Gros chats** (50 pts) - Poursuivent le joueur
-4. **Poissons** (25 pts) - Mouvement ondulant
-5. **Écureuils** (15 pts) - Sautent fréquemment
-6. **Ours Boss** (200 pts) - Attaques de charge
-
-## 🗺️ Niveaux
-
-1. **Toits de Montmartre** - Introduction avec souris
-2. **Quartier Latin** - Ajout des chiens
-3. **Les Grands Boulevards** - Gros chats et défis
-4. **Bois de Boulogne** - Tous les ennemis mélangés
-5. **Tanière de l'Ours** - Combat final contre le boss
-
-## 🚀 Installation et Lancement
-
-### Prérequis
-- Navigateur web moderne (Chrome, Firefox, Safari, Edge)
-- Aucune installation requise !
-
-### Lancement
-1. Ouvrez le fichier `index.html` dans votre navigateur
-2. Le jeu se charge automatiquement
-3. Utilisez les contrôles pour jouer
-
-### Structure des Fichiers
-```
-cat-platformer/
-├── index.html              # Page principale
-├── js/
-│   ├── game.js             # Moteur de jeu
-│   ├── player.js           # Logique du joueur
-│   ├── enemies.js          # Classes d'ennemis
-│   ├── level.js            # Gestionnaire de niveaux
-│   └── main.js             # Initialisation
-├── sprites/
-│   ├── cat/                # Animations du chat
-│   ├── enemies/            # Sprites des ennemis
-│   └── environment/        # Décors parisiens
-└── specifications.md       # Documentation technique
+```bash
+open index.html
 ```
 
-## 🎨 Caractéristiques Techniques
+## Game Controls
 
-- **Résolution** : 1200x600 pixels
-- **FPS** : 60 images par seconde
-- **Technologie** : HTML5 Canvas + JavaScript
-- **Sprites** : PNG avec transparence
-- **Compatible** : Tous navigateurs modernes
+- **Arrow Keys**: Move left/right
+- **Up Arrow / Space**: Jump
+- **Left Ctrl**: Front paw attack
+- **Right Ctrl**: Back paw attack
+- **Escape**: Pause game
 
-## 🏆 Objectifs et Scoring
+## Features
 
-- **Objectif principal** : Terminer tous les niveaux
-- **Objectif secondaire** : Obtenir le meilleur score
-- **Bonus** : Finir sans perdre de vie
+- Smooth 60 FPS gameplay
+- 5 levels with increasing difficulty
+- Multiple enemy types with unique AI
+- Parisian rooftop environments with Eiffel Tower backdrop
+- Fluid animations and physics
+- Health system (3 hearts)
+- Scoring system
+- Debug tools for development
 
-### Système de Points
-- Souris : 10 points
-- Écureuils : 15 points
-- Chiens : 20 points
-- Poissons : 25 points
-- Gros chats : 50 points
-- Ours boss : 200 points
+## Enemies
 
-## 🛠️ Fonctionnalités Avancées
+1. **Evil Mice** (10 pts) - Fast and numerous
+2. **Small Dogs** (20 pts) - Jump occasionally
+3. **Big Cats** (50 pts) - Chase the player
+4. **Fish** (25 pts) - Undulating movement
+5. **Squirrels** (15 pts) - Jump frequently
+6. **Bear Boss** (200 pts) - Charging attacks
 
-### Système d'Animation
-- **Animations fluides** pour tous les personnages
-- **Transitions naturelles** entre les états
-- **Effets visuels** pour les attaques et destructions
+## Levels
 
-### Intelligence Artificielle
-- **Patrouilles** pour les ennemis de base
-- **Poursuite** pour les gros chats
-- **Comportements spéciaux** pour chaque type d'ennemi
+1. **Montmartre Rooftops** - Introduction with mice
+2. **Latin Quarter** - Dogs added
+3. **Grand Boulevards** - Big cats and challenges
+4. **Bois de Boulogne** - All enemies mixed
+5. **Bear's Den** - Final boss battle
 
-### Interface Utilisateur
-- **Score en temps réel**
-- **Indicateur de vie**
-- **Écrans de pause, victoire et défaite**
-- **Instructions intégrées**
+## Game Versions
 
-## 🎵 Améliorations Futures
+- `index.html`: Main game
+- `simple-version.html`: Self-contained version for testing
+- `diagnostic.html`: Debug and compatibility testing
 
-- Effets sonores et musique
-- Niveaux supplémentaires
-- Nouveaux types d'ennemis
-- Power-ups et collectibles
-- Mode multijoueur local
+## Debug Console
 
-## 🐛 Debug et Développement
+Access debug functions in browser console:
 
-### Fonctions Debug (Console)
 ```javascript
-window.debugGame.skipLevel()    // Passer au niveau suivant
-window.debugGame.addScore(100)  // Ajouter des points
-window.debugGame.godMode()      // Mode invincible
-window.debugGame.showInfo()     // Infos du niveau actuel
+window.debugGame.skipLevel()     // Skip to next level
+window.debugGame.addScore(100)   // Add points
+window.debugGame.godMode()       // Enable invincibility
+window.debugGame.showInfo()      // Show level info
 ```
 
-## 👨‍💻 Crédits
+## Technical Specifications
 
-- **Développement** : Manus AI
-- **Concept** : Jeu de plateforme parisien
-- **Art Style** : Pixel art cartoon
-- **Inspiration** : Toits de Paris et culture française
+- **Resolution**: 1200x600 pixels
+- **FPS**: 60 frames per second
+- **Technology**: HTML5 Canvas + JavaScript
+- **Sprites**: PNG with transparency
+- **Compatible**: All modern browsers
 
-## 📝 Licence
+## Scoring System
 
-Ce jeu est créé à des fins éducatives et de divertissement. Tous les assets visuels sont générés spécifiquement pour ce projet.
+- Mice: 10 points
+- Squirrels: 15 points
+- Dogs: 20 points
+- Fish: 25 points
+- Big cats: 50 points
+- Bear boss: 200 points
 
----
+## Troubleshooting
 
-**Amusez-vous bien en explorant les toits de Paris avec notre chat orange ! 🐱🇫🇷**
+- **Blue screen**: Use Ctrl+Shift+R to force reload
+- **Missing sprites**: Check `sprites/` directory structure
+- **Performance issues**: Ensure 60 FPS in browser DevTools
+
+## Architecture
+
+Built with vanilla JavaScript using a modular game engine:
+
+- **Game Engine**: Core physics and rendering (`js/game.js`)
+- **Player System**: Cat mechanics and animations (`js/player.js`)
+- **Enemy AI**: Various creature behaviors (`js/enemies.js`)
+- **Level Management**: Progression and environments (`js/level.js`)
+
+No external dependencies or build tools required!
 

@@ -5,9 +5,9 @@ class Player extends GameObject {
         
         // Propriétés du joueur
         this.speed = 12; // Accéléré de 3 à 12 (x4) pour un gameplay plus rapide
-        this.jumpPower = 15;
-        this.health = 3;
-        this.maxHealth = 3;
+        this.jumpPower = 20; // Augmenté de 15 à 20 pour un saut plus haut
+        this.health = 6;
+        this.maxHealth = 6;
         
         // Animation
         this.currentAnimation = 'idle';
@@ -20,28 +20,39 @@ class Player extends GameObject {
         this.attacking = false;
         this.attackTimer = 0;
         this.attackDuration = 20;
+        this.attackedEnemies = []; // Liste des ennemis déjà attaqués dans cette attaque
         this.invulnerable = false;
         this.invulnerabilityTimer = 0;
         this.invulnerabilityDuration = 60;
         
-        // Animations disponibles
+        // Animations disponibles - sprites inversés pour corriger la direction
         this.animations = {
-            idle: ['cat_idle_1', 'cat_idle_2', 'cat_idle_3', 'cat_idle_4'],
-            run: ['cat_run_1', 'cat_run_2'],
+            idle: ['cat_idle_2', 'cat_idle_1', 'cat_idle_4', 'cat_idle_3'], // Inversé
+            run: ['cat_run_2', 'cat_run_1'], // Inversé
             jump_up: ['cat_jump_up'],
             jump_down: ['cat_jump_down'],
-            attack_front: ['cat_attack_front'],
-            attack_back: ['cat_attack_back']
+            attack_front: ['cat_attack_back'], // Inversé
+            attack_back: ['cat_attack_front']  // Inversé
         };
     }
     
     update() {
+        const oldX = this.x;
+        
         this.handleInput();
         this.updateAnimation();
         this.updateTimers();
         
-        // Appliquer la physique
-        super.update();
+        // Appliquer la physique personnalisée pour le joueur
+        this.applyGravity();
+        
+        this.x += this.vx;
+        this.y += this.vy;
+        
+        // Appliquer la friction seulement en l'air (pour conserver le momentum du saut)
+        if (!this.onGround) {
+            this.vx *= this.game.friction;
+        }
         
         // Limites du monde
         if (this.x < 0) this.x = 0;
@@ -71,6 +82,9 @@ class Player extends GameObject {
                 this.currentAnimation = 'run';
             }
         } else {
+            if (this.onGround) {
+                this.vx = 0;
+            }
             if (this.onGround && !this.attacking) {
                 this.currentAnimation = 'idle';
             }
@@ -82,10 +96,14 @@ class Player extends GameObject {
             this.onGround = false;
         }
         
-        // Attaques
-        if (keys['ControlLeft'] && !this.attacking) {
+        // Attaques - Configuration optimisée
+        if ((keys['KeyQ'] || keys['q'] || keys['Q']) && !this.attacking) {
             this.attack('front');
-        } else if (keys['ControlRight'] && !this.attacking) {
+        } else if ((keys['KeyA'] || keys['a'] || keys['A']) && !this.attacking) {
+            this.attack('back');
+        } else if (keys['Enter'] && !this.attacking) {
+            this.attack('front');
+        } else if ((keys['ShiftLeft'] || keys['Shift']) && !this.attacking) {
             this.attack('back');
         }
         
@@ -104,6 +122,7 @@ class Player extends GameObject {
         this.attackTimer = this.attackDuration;
         this.currentAnimation = `attack_${type}`;
         this.animationFrame = 0;
+        this.attackedEnemies = []; // Reset la liste des ennemis attaqués
     }
     
     updateAnimation() {
@@ -138,22 +157,42 @@ class Player extends GameObject {
     }
     
     handlePlatformCollision(platform) {
-        // Collision par le haut (atterrissage)
-        if (this.vy > 0 && this.y < platform.y) {
-            this.y = platform.y - this.height;
+        // Détecter le type de collision plus précisément
+        const overlapLeft = (this.x + this.width) - platform.x;
+        const overlapRight = (platform.x + platform.width) - this.x;
+        const overlapTop = (this.y + this.height) - platform.y;
+        const overlapBottom = (platform.y + platform.height) - this.y;
+        
+        // Trouver la plus petite overlap pour déterminer la direction de collision
+        const minOverlap = Math.min(overlapLeft, overlapRight, overlapTop, overlapBottom);
+        
+        // Collision par le haut (atterrissage) - aligner correctement avec les plateformes
+        if (minOverlap === overlapTop && this.vy >= 0) {
+            // Faire atterrir le chat exactement sur la plateforme comme les autres animaux
+            // Ajuster selon la hauteur de la plateforme
+            let yOffset = 8; // 8px d'overlap comme les souris
+            
+            // Plateformes du bas (sol) : y >= 472 (600-128)
+            // Plateformes du milieu : y entre 216 et 471
+            // Plateformes du haut : y < 216
+            if (platform.y >= 216) { // Plateformes du bas et du milieu
+                yOffset += 50; // Descendre de 50px supplémentaires
+            }
+            
+            this.y = platform.y - this.height + yOffset;
             this.vy = 0;
             this.onGround = true;
         }
         // Collision par le bas (tête contre plateforme)
-        else if (this.vy < 0 && this.y > platform.y) {
+        else if (minOverlap === overlapBottom && this.vy <= 0) {
             this.y = platform.y + platform.height;
             this.vy = 0;
         }
-        // Collision latérale
-        else if (this.vx > 0 && this.x < platform.x) {
+        // Collisions latérales SEULEMENT si on n'est pas sur le dessus de la plateforme
+        else if (minOverlap === overlapLeft && this.vx > 0 && !this.onGround) {
             this.x = platform.x - this.width;
             this.vx = 0;
-        } else if (this.vx < 0 && this.x > platform.x) {
+        } else if (minOverlap === overlapRight && this.vx < 0 && !this.onGround) {
             this.x = platform.x + platform.width;
             this.vx = 0;
         }
@@ -182,52 +221,66 @@ class Player extends GameObject {
     
     render() {
         const ctx = this.game.ctx;
-        const spriteName = this.getCurrentSprite();
-        const sprite = this.game.sprites[spriteName];
         
-        // Effet de clignotement très lent si invulnérable (divisé par 10)
-        if (this.invulnerable && Math.floor(this.invulnerabilityTimer / 100) % 2) {
-            return; // Ne pas dessiner pour créer l'effet de clignotement très lent
+        // Effet de clignotement si invulnérable 
+        if (this.invulnerable && Math.floor(this.invulnerabilityTimer / 10) % 2) {
+            return; // Ne pas dessiner pour créer l'effet de clignotement
         }
         
-        if (sprite) {
-            if (!this.facingRight) {
-                // Utiliser le cache pour les sprites retournés
-                const flippedSprite = this.game.getFlippedSprite(spriteName);
-                if (flippedSprite && flippedSprite.width > 0 && flippedSprite.height > 0) {
-                    ctx.drawImage(flippedSprite, this.x, this.y, this.width, this.height);
-                }
-                // Pas de fallback - ne rien dessiner si le sprite retourné échoue
+        // Utiliser le bon sprite selon l'animation actuelle
+        const animation = this.animations[this.currentAnimation];
+        let spriteName = 'cat_idle_1'; // fallback
+        
+        if (animation && animation.length > 0) {
+            spriteName = animation[this.animationFrame % animation.length];
+        }
+        
+        const sprite = this.game.sprites[spriteName];
+        
+        if (sprite && sprite.complete && sprite.width > 0 && sprite.height > 0) {
+            ctx.save();
+            if (this.facingRight) {
+                // Flip horizontally pour regarder à droite
+                ctx.scale(-1, 1);
+                ctx.drawImage(sprite, -this.x - this.width, this.y, this.width, this.height);
             } else {
-                // Dessiner normalement si le joueur regarde à droite
+                // Draw normally pour regarder à gauche
                 ctx.drawImage(sprite, this.x, this.y, this.width, this.height);
             }
-        } 
-        // Pas de fallback - ne rien dessiner si le sprite n'est pas chargé
+            ctx.restore();
+        }
         
-        // Dessiner la barre de vie
+        // Draw health bar
         this.drawHealthBar();
     }
     
     drawHealthBar() {
-        const ctx = this.game.ctx;
-        const barWidth = 60;
-        const barHeight = 8;
-        const barX = this.x + (this.width - barWidth) / 2;
-        const barY = this.y - 15;
-        
-        // Fond de la barre
-        ctx.fillStyle = '#000';
-        ctx.fillRect(barX - 1, barY - 1, barWidth + 2, barHeight + 2);
-        
-        // Barre de vie
-        ctx.fillStyle = '#e74c3c';
-        ctx.fillRect(barX, barY, barWidth, barHeight);
-        
-        // Vie actuelle
-        ctx.fillStyle = '#2ecc71';
-        const healthWidth = (this.health / this.maxHealth) * barWidth;
-        ctx.fillRect(barX, barY, healthWidth, barHeight);
+        // Afficher la barre de vie seulement si le chat est blessé
+        if (this.health < this.maxHealth && this.health > 0) {
+            const ctx = this.game.ctx;
+            const barWidth = 60;
+            const barHeight = 8;
+            const barX = this.x + (this.width - barWidth) / 2;
+            const barY = this.y - 15;
+            
+            // Fond de la barre (noir)
+            ctx.fillStyle = '#000';
+            ctx.fillRect(barX - 1, barY - 1, barWidth + 2, barHeight + 2);
+            
+            // Barre de vie perdue (rouge)
+            ctx.fillStyle = '#e74c3c';
+            ctx.fillRect(barX, barY, barWidth, barHeight);
+            
+            // Vie actuelle (vert)
+            ctx.fillStyle = '#2ecc71';
+            const healthWidth = (this.health / this.maxHealth) * barWidth;
+            ctx.fillRect(barX, barY, healthWidth, barHeight);
+            
+            // Bordure blanche pour la visibilité
+            ctx.strokeStyle = '#fff';
+            ctx.lineWidth = 1;
+            ctx.strokeRect(barX, barY, barWidth, barHeight);
+        }
     }
 }
 

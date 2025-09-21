@@ -1,9 +1,18 @@
 // Fichier principal pour initialiser le jeu
 let game;
+let gameInitialized = false;
 
 // Attendre que la page soit chargée
 document.addEventListener('DOMContentLoaded', function() {
     console.log('Initialisation du jeu Chat Parisien...');
+    
+    // Vérifier si le jeu existe déjà
+    if (game || gameInitialized) {
+        console.log('Le jeu existe déjà, ne pas créer une nouvelle instance');
+        return;
+    }
+    
+    gameInitialized = true;
     
     // Créer l'instance du jeu
     game = new Game();
@@ -74,7 +83,7 @@ function restartGame() {
     // Réinitialiser l'état du jeu
     game.gameState = 'playing';
     game.score = 0;
-    game.lives = 3;
+    game.lives = 6;
     game.level = 1;
     
     // Réinitialiser le joueur
@@ -263,5 +272,5 @@ window.debugGame = {
 
 console.log('Jeu Chat Parisien initialisé !');
 console.log('Fonctions debug disponibles dans window.debugGame');
-console.log('Contrôles: Flèches = Déplacement, Espace = Saut, Ctrl = Attaque, Échap = Pause');
+console.log('Contrôles: Flèches = Déplacement, Espace = Saut, Q = Attaque avant, A = Attaque arrière, Échap = Pause');
 

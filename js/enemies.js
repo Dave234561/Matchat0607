@@ -4,13 +4,15 @@
 class Enemy extends GameObject {
     constructor(x, y, width, height, game) {
         super(x, y, width, height, game);
-        this.health = 1;
+        this.health = 3;
         this.speed = 1;
         this.direction = 1; // 1 = droite, -1 = gauche
         this.points = 10;
         this.attackDamage = 1;
         this.patrolDistance = 100;
         this.startX = x;
+        this.startY = y; // Remember initial Y position
+        this.onGround = true; // Start on ground
         
         // Animation
         this.animationFrame = 0;
@@ -19,12 +21,35 @@ class Enemy extends GameObject {
         
         // Forcer l'utilisation du fallback pour éviter les fonds blancs
         this.useFallback = true;
+        
+        // Effet de dégâts
+        this.damagedFlash = 0;
     }
     
     update() {
         this.patrol();
         this.updateAnimation();
-        super.update();
+        
+        // Décrémenter le flash de dégâts
+        if (this.damagedFlash > 0) {
+            this.damagedFlash--;
+        }
+        
+        // Apply horizontal movement only
+        this.x += this.vx;
+        this.vx *= this.game.friction;
+        
+        // Keep enemy at their initial Y position (already includes 10px overlap)
+        this.y = this.startY;
+        this.vy = 0;
+        this.onGround = true;
+        
+        // Only apply gravity to flying enemies like fish
+        if (this.constructor.name === 'Fish') {
+            // Fish should float, so use normal physics
+            this.y += this.vy;
+            this.vy += this.game.gravity;
+        }
         
         // Empêcher de tomber dans le vide
         if (this.y > this.game.height) {
@@ -57,12 +82,41 @@ class Enemy extends GameObject {
         }
     }
     
-    takeDamage() {
-        this.health--;
+    takeDamage(damage = 1) {
+        this.health -= damage;
+        
+        // Effet visuel de dégâts (flash rouge)
+        this.damagedFlash = 15; // 15 frames de flash
+        
         if (this.health <= 0) {
             this.destroyed = true;
             // Effet de particules (optionnel)
             this.createDeathEffect();
+        }
+    }
+    
+    drawHealthBar() {
+        // Ne dessiner la barre de vie que si l'ennemi est blessé
+        if (this.health < 3 && this.health > 0) {
+            const ctx = this.game.ctx;
+            const barWidth = this.width;
+            const barHeight = 4;
+            const barX = this.x;
+            const barY = this.y - 10;
+            
+            // Fond de la barre (rouge)
+            ctx.fillStyle = '#ff0000';
+            ctx.fillRect(barX, barY, barWidth, barHeight);
+            
+            // Vie restante (vert)
+            ctx.fillStyle = '#00ff00';
+            const healthWidth = (this.health / 3) * barWidth;
+            ctx.fillRect(barX, barY, healthWidth, barHeight);
+            
+            // Bordure
+            ctx.strokeStyle = '#000000';
+            ctx.lineWidth = 1;
+            ctx.strokeRect(barX, barY, barWidth, barHeight);
         }
     }
     
@@ -82,7 +136,6 @@ class Enemy extends GameObject {
 class Mouse extends Enemy {
     constructor(x, y, game) {
         super(x, y, 32, 32, game);
-        this.health = 1;
         this.speed = 2;
         this.points = 10;
         this.spriteName = 'mouse_final';
@@ -131,6 +184,9 @@ class Mouse extends Enemy {
                 ctx.fillRect(this.x - 6, this.y + this.height/2, 8, 2);
             }
         }
+        
+        // Dessiner la barre de vie
+        this.drawHealthBar();
     }
 }
 
@@ -138,7 +194,6 @@ class Mouse extends Enemy {
 class Dog extends Enemy {
     constructor(x, y, game) {
         super(x, y, 48, 48, game);
-        this.health = 2;
         this.speed = 1.5;
         this.points = 20;
         this.spriteName = 'dog_final';
@@ -147,14 +202,29 @@ class Dog extends Enemy {
     }
     
     update() {
-        super.update();
+        this.patrol();
+        this.updateAnimation();
         
-        // Saut occasionnel
-        this.jumpTimer++;
-        if (this.jumpTimer >= this.jumpCooldown && this.onGround && Math.random() < 0.02) {
-            this.vy = -8;
-            this.onGround = false;
-            this.jumpTimer = 0;
+        // Apply horizontal movement only
+        this.x += this.vx;
+        this.vx *= this.game.friction;
+        
+        // Keep enemy at their initial Y position (already includes 10px overlap)
+        this.y = this.startY;
+        this.vy = 0;
+        this.onGround = true;
+        
+        // Saut occasionnel (disabled to keep on ground)
+        // this.jumpTimer++;
+        // if (this.jumpTimer >= this.jumpCooldown && this.onGround && Math.random() < 0.02) {
+        //     this.vy = -8;
+        //     this.onGround = false;
+        //     this.jumpTimer = 0;
+        // }
+        
+        // Empêcher de tomber dans le vide
+        if (this.y > this.game.height) {
+            this.destroyed = true;
         }
     }
     
@@ -208,6 +278,9 @@ class Dog extends Enemy {
                 ctx.fillRect(this.x - 3, this.y + 10, 6, 15);
             }
         }
+        
+        // Dessiner la barre de vie
+        this.drawHealthBar();
     }
 }
 
@@ -239,9 +312,22 @@ class BigCat extends Enemy {
         }
         
         this.updateAnimation();
-        super.update();
+        
+        // Apply horizontal movement only
+        this.x += this.vx;
+        this.vx *= this.game.friction;
+        
+        // Keep enemy at their initial Y position (already includes 10px overlap)
+        this.y = this.startY;
+        this.vy = 0;
+        this.onGround = true;
         
         this.attackTimer++;
+        
+        // Empêcher de tomber dans le vide
+        if (this.y > this.game.height) {
+            this.destroyed = true;
+        }
     }
     
     render() {
@@ -290,6 +376,9 @@ class BigCat extends Enemy {
                 ctx.fillRect(this.x + 55, this.y + 5, 8, 12);
             }
         }
+        
+        // Dessiner la barre de vie
+        this.drawHealthBar();
     }
 }
 
@@ -297,7 +386,7 @@ class BigCat extends Enemy {
 class Bear extends Enemy {
     constructor(x, y, game) {
         super(x, y, 128, 128, game);
-        this.health = 10;
+        this.health = 4;
         this.speed = 0.5;
         this.points = 200;
         this.spriteName = 'bear_final';
@@ -334,7 +423,20 @@ class Bear extends Enemy {
         }
         
         this.updateAnimation();
-        super.update();
+        
+        // Apply horizontal movement only
+        this.x += this.vx;
+        this.vx *= this.game.friction;
+        
+        // Keep enemy at their initial Y position (already includes 10px overlap)
+        this.y = this.startY;
+        this.vy = 0;
+        this.onGround = true;
+        
+        // Empêcher de tomber dans le vide
+        if (this.y > this.game.height) {
+            this.destroyed = true;
+        }
     }
     
     render() {
@@ -397,30 +499,33 @@ class Bear extends Enemy {
     }
     
     drawBossHealthBar() {
-        const ctx = this.game.ctx;
-        const barWidth = 200;
-        const barHeight = 20;
-        const barX = this.game.width / 2 - barWidth / 2;
-        const barY = 30;
-        
-        // Fond de la barre
-        ctx.fillStyle = '#000';
-        ctx.fillRect(barX - 2, barY - 2, barWidth + 4, barHeight + 4);
-        
-        // Barre de vie
-        ctx.fillStyle = '#e74c3c';
-        ctx.fillRect(barX, barY, barWidth, barHeight);
-        
-        // Vie actuelle
-        ctx.fillStyle = '#f39c12';
-        const healthWidth = (this.health / 10) * barWidth;
-        ctx.fillRect(barX, barY, healthWidth, barHeight);
-        
-        // Texte
-        ctx.fillStyle = '#fff';
-        ctx.font = '16px Arial';
-        ctx.textAlign = 'center';
-        ctx.fillText('BOSS OURS', this.game.width / 2, barY - 10);
+        // Afficher la barre de vie du boss seulement si blessé
+        if (this.health < 4 && this.health > 0) {
+            const ctx = this.game.ctx;
+            const barWidth = 200;
+            const barHeight = 20;
+            const barX = this.game.width / 2 - barWidth / 2;
+            const barY = 30;
+            
+            // Fond de la barre
+            ctx.fillStyle = '#000';
+            ctx.fillRect(barX - 2, barY - 2, barWidth + 4, barHeight + 4);
+            
+            // Barre de vie
+            ctx.fillStyle = '#e74c3c';
+            ctx.fillRect(barX, barY, barWidth, barHeight);
+            
+            // Vie actuelle
+            ctx.fillStyle = '#f39c12';
+            const healthWidth = (this.health / 4) * barWidth;
+            ctx.fillRect(barX, barY, healthWidth, barHeight);
+            
+            // Texte
+            ctx.fillStyle = '#fff';
+            ctx.font = '16px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText('BOSS OURS', this.game.width / 2, barY - 10);
+        }
     }
 }
 
@@ -460,7 +565,6 @@ class Particle extends GameObject {
 class Squirrel extends Enemy {
     constructor(x, y, game) {
         super(x, y, 40, 40, game);
-        this.health = 1;
         this.speed = 2.5;
         this.points = 15;
         this.spriteName = 'squirrel_idle';
@@ -469,14 +573,29 @@ class Squirrel extends Enemy {
     }
     
     update() {
-        super.update();
+        this.patrol();
+        this.updateAnimation();
         
-        // Saut fréquent
-        this.jumpTimer++;
-        if (this.jumpTimer >= this.jumpCooldown && this.onGround && Math.random() < 0.05) {
-            this.vy = -10; // Saut plus haut
-            this.onGround = false;
-            this.jumpTimer = 0;
+        // Apply horizontal movement only
+        this.x += this.vx;
+        this.vx *= this.game.friction;
+        
+        // Keep enemy at their initial Y position (already includes 10px overlap)
+        this.y = this.startY;
+        this.vy = 0;
+        this.onGround = true;
+        
+        // Saut fréquent (disabled to keep on ground)
+        // this.jumpTimer++;
+        // if (this.jumpTimer >= this.jumpCooldown && this.onGround && Math.random() < 0.05) {
+        //     this.vy = -10; // Saut plus haut
+        //     this.onGround = false;
+        //     this.jumpTimer = 0;
+        // }
+        
+        // Empêcher de tomber dans le vide
+        if (this.y > this.game.height) {
+            this.destroyed = true;
         }
     }
     
@@ -526,6 +645,9 @@ class Squirrel extends Enemy {
                 ctx.fillRect(this.x - 6, this.y + 2, 8, 26);
             }
         }
+        
+        // Dessiner la barre de vie
+        this.drawHealthBar();
     }
 }
 
@@ -533,7 +655,6 @@ class Squirrel extends Enemy {
 class Fish extends Enemy {
     constructor(x, y, game) {
         super(x, y, 48, 32, game);
-        this.health = 1;
         this.speed = 1;
         this.points = 25;
         this.spriteName = 'fish_idle';
@@ -608,6 +729,9 @@ class Fish extends Enemy {
                 ctx.fillRect(this.x + 2, this.y + 16, 6, 8);
             }
         }
+        
+        // Dessiner la barre de vie
+        this.drawHealthBar();
     }
 }
 
